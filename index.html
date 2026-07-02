@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficha Censal · Panorama Municipal INEGI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#101B30;
+    --ink-deep:#0A1322;
+    --paper:#DCE3E4;
+    --paper-soft:#c9d3d5;
+    --ochre:#D9932F;
+    --ochre-soft:#f0c98a;
+    --verde:#4E8B7C;
+    --line: rgba(220,227,228,0.18);
+    --text-hi:#F2EFE6;
+    --text-mid:#B9C2CE;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--ink);
+    color:var(--text-hi);
+    font-family:'Archivo', sans-serif;
+    overflow-x:hidden;
+  }
+  ::selection{ background:var(--ochre); color:var(--ink-deep); }
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 32px;
+    background:linear-gradient(180deg, rgba(10,19,34,0.96), rgba(10,19,34,0.75) 80%, transparent);
+    backdrop-filter:blur(6px);
+  }
+  .brand{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--text-mid);
+  }
+  .brand b{color:var(--ochre-soft); font-weight:600;}
+  .navlinks{ display:flex; gap:22px; }
+  .navlinks a{
+    color:var(--text-mid); text-decoration:none;
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    letter-spacing:0.08em; text-transform:uppercase;
+    padding-bottom:3px; border-bottom:1px solid transparent;
+    transition:color .2s, border-color .2s;
+  }
+  .navlinks a:hover, .navlinks a:focus-visible{ color:var(--ochre-soft); border-color:var(--ochre-soft); outline:none; }
+
+  /* ---------- HERO ---------- */
+  header.hero{
+    min-height:100vh;
+    display:flex; flex-direction:column; justify-content:center;
+    padding:140px 8vw 80px;
+    position:relative;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-soft);
+    margin-bottom:22px; display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{ content:''; width:26px; height:1px; background:var(--ochre-soft); display:inline-block; }
+  h1.title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(2.6rem, 6.4vw, 5.6rem);
+    line-height:1.02;
+    letter-spacing:-0.01em;
+    max-width:16ch;
+  }
+  h1.title em{ font-style:italic; font-weight:400; color:var(--ochre-soft); }
+  .hero p.sub{
+    margin-top:26px; max-width:52ch; font-size:1.08rem; line-height:1.6;
+    color:var(--text-mid);
+  }
+  .hero-stats{
+    display:flex; flex-wrap:wrap; gap:0; margin-top:56px;
+    border-top:1px solid var(--line);
+  }
+  .hero-stat{
+    padding:20px 30px 0 0; margin-right:30px; min-width:150px;
+  }
+  .hero-stat .n{ font-family:'Fraunces', serif; font-size:2.1rem; font-weight:600; color:var(--paper); }
+  .hero-stat .l{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-mid); margin-top:4px;}
+  .scroll-cue{
+    position:absolute; bottom:36px; left:8vw;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-mid);
+    display:flex; align-items:center; gap:8px;
+  }
+  .scroll-cue .dot{ width:6px; height:6px; border-radius:50%; background:var(--ochre-soft); animation:pulse 1.8s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
+
+  /* ---------- SECTION ---------- */
+  section.panel{
+    min-height:100vh;
+    padding:110px 8vw;
+    border-bottom:1px solid var(--line);
+    display:grid;
+    grid-template-columns:1fr 1.15fr;
+    gap:60px;
+    align-items:center;
+    position:relative;
+  }
+  section.panel.reverse{ grid-template-columns:1.15fr 1fr; }
+  section.panel.reverse .panel-text{ order:2; }
+  section.panel.reverse .panel-chart{ order:1; }
+
+  .code-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; letter-spacing:.1em;
+    color:var(--ochre-soft); text-transform:uppercase;
+    display:flex; align-items:center; gap:10px; margin-bottom:18px;
+  }
+  .code-tag span.num{
+    border:1px solid var(--ochre-soft); border-radius:3px; padding:2px 7px;
+    font-weight:600;
+  }
+  h2.panel-title{
+    font-family:'Fraunces', serif; font-weight:600;
+    font-size:clamp(2.1rem, 3.4vw, 3.1rem);
+    line-height:1.05; margin-bottom:20px;
+  }
+  .panel-text p{
+    color:var(--text-mid); font-size:1.02rem; line-height:1.7; max-width:46ch;
+  }
+  .panel-text p + p{ margin-top:14px; }
+  .panel-text strong{ color:var(--text-hi); font-weight:600; }
+
+  .stamp{
+    margin-top:34px; display:inline-flex; flex-direction:column; align-items:center;
+    justify-content:center; text-align:center;
+    width:118px; height:118px; border-radius:50%;
+    border:1.5px dashed var(--ochre-soft);
+    transform:rotate(-8deg);
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--ochre-soft);
+    position:relative;
+  }
+  .stamp .delta{ font-size:1.3rem; font-weight:600; line-height:1;}
+  .stamp .yrs{ font-size:9px; letter-spacing:.06em; margin-top:5px; text-transform:uppercase; opacity:.85;}
+  .stamp::before{
+    content:''; position:absolute; inset:8px; border:1px solid var(--ochre-soft); border-radius:50%; opacity:.5;
+  }
+
+  .panel-chart{
+    background:var(--paper);
+    border-radius:4px;
+    padding:28px 24px 18px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.5);
+    position:relative;
+  }
+  .panel-chart .chart-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:14px; color:var(--ink-deep);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .panel-chart .chart-head .src{ font-size:9.5px; color:#5b6a72; letter-spacing:.04em; }
+  .panel-chart .chart-head .metric{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+  .chart-wrap{ position:relative; height:280px; }
+
+  /* ---------- DOC SECTIONS (Introducción / Conclusión) ---------- */
+  .doc-section{
+    padding:120px 8vw;
+    border-bottom:1px solid;
+    display:flex; justify-content:center;
+  }
+  .doc-section .doc-inner{ max-width:76ch; }
+  .doc-section h2.panel-title{ margin-bottom:26px; }
+  .doc-section p{ color:var(--text-mid); font-size:1.05rem; line-height:1.78; }
+  .doc-section p + p{ margin-top:18px; }
+  .dropcap{
+    float:left; font-family:'Fraunces', serif; font-weight:600;
+    font-size:3.6em; line-height:0.76; padding:6px 10px 0 0;
+    color:var(--ochre-soft);
+  }
+  .doc-stamp-wrap{ display:flex; justify-content:center; margin-top:44px; }
+  .doc-stamp-wrap .stamp{ width:132px; height:132px; }
+  .doc-stamp-wrap .stamp .delta{ font-size:1rem; }
+
+  /* ---------- INSTITUTIONAL PANELS (INEGI / Metodología) ---------- */
+  .panel-full{
+    padding:110px 8vw;
+    border-bottom:1px solid var(--line);
+  }
+  .panel-full.alt{ background:rgba(255,255,255,0.015); }
+  .panel-full .lead{
+    color:var(--text-mid); font-size:1.05rem; line-height:1.75;
+    max-width:82ch; margin-top:16px;
+  }
+  .sub-label{
+    margin-top:48px; margin-bottom:20px;
+    font-family:'Fraunces', serif; font-weight:600; font-size:1.35rem;
+    color:var(--paper);
+  }
+  .card-grid{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; margin-top:28px;
+  }
+  .card-grid.four{ grid-template-columns:repeat(4, 1fr); }
+  .info-card{
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--line); border-radius:6px;
+    padding:26px 22px;
+    transition:border-color .2s, transform .2s;
+  }
+  .info-card:hover{ border-color:var(--ochre-soft); transform:translateY(-3px); }
+  .info-card h3{
+    font-family:'Fraunces', serif; font-weight:600; font-size:1.02rem;
+    color:var(--ochre-soft); margin-bottom:10px; line-height:1.32;
+  }
+  .info-card p{ color:var(--text-mid); font-size:.9rem; line-height:1.6; }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    padding:60px 8vw 40px;
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:20px;
+  }
+  footer .note{ font-size:.92rem; color:var(--text-mid); max-width:50ch; line-height:1.6; }
+  footer .fmark{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--text-mid); letter-spacing:.08em; text-transform:uppercase;
+  }
+
+  @media (max-width:860px){
+    nav .navlinks{ display:none; }
+    section.panel, section.panel.reverse{
+      grid-template-columns:1fr; gap:34px; padding:90px 6vw;
+    }
+    section.panel.reverse .panel-text, section.panel.reverse .panel-chart{ order:unset; }
+    .chart-wrap{ height:230px; }
+    .panel-full{ padding:80px 6vw; }
+    .card-grid, .card-grid.four{ grid-template-columns:1fr; }
+    .doc-section{ padding:90px 6vw; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">FICHA CENSAL · <b>MUNICIPIO</b></div>
+  <div class="navlinks">
+    <a href="#que-es-inegi">INEGI</a>
+    <a href="#metodologia">Metodología</a>
+    <a href="#poblacion">Población</a>
+    <a href="#educacion">Educación</a>
+    <a href="#salud">Salud</a>
+    <a href="#empleo">Empleo</a>
+    <a href="#hogares">Hogares</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow">Datos abiertos · INEGI</div>
+  <h1 class="title">Misantla, <em>leído</em> en cinco cifras.</h1>
+  <p class="sub">Un recorrido por la evolución demográfica y social del municipio a partir de los registros del
+  Instituto Nacional de Estadística y Geografía: cuántos somos, cómo vivimos, y qué tanto ha cambiado en dos décadas.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="n">65,761</div><div class="l">Habitantes · 2020</div></div>
+    <div class="hero-stat"><div class="n">92.7%</div><div class="l">Alfabetización · 2020</div></div>
+    <div class="hero-stat"><div class="n">19,523</div><div class="l">Hogares censales · 2020</div></div>
+    <div class="hero-stat"><div class="n">+323%</div><div class="l">Derechohabiencia 2000–20</div></div>
+  </div>
+  <div class="scroll-cue"><span class="dot"></span> Desplázate para explorar los cinco apartados</div>
+</header>
+
+<!-- INTRODUCCIÓN -->
+<section class="doc-section" id="introduccion">
+  <div class="doc-inner">
+    <div class="eyebrow"><h2 class="panel-title">Introducción</h2></div>
+    <p><span class="dropcap">E</span>n la era de la información, la toma de decisiones estratégicas, el diseño de
+    políticas públicas eficaces y el desarrollo económico y social de una nación dependen por completo de la
+    disponibilidad de datos precisos, veraces y oportunos. En México, el pilar fundamental que sostiene esta
+    infraestructura informativa es el Instituto Nacional de Estadística y Geografía (INEGI). Como organismo
+    público autónomo, tiene la crucial responsabilidad de normar, coordinar, captar y difundir información
+    oficial detallada sobre el territorio, la población y la dinámica económica del país.</p>
+    <p>El presente portal web ha sido desarrollado con el propósito de estructurar, analizar y visualizar de
+    manera clara e interactiva la riqueza de los datos generados por esta institución. A través del uso de bases
+    de datos robustas y herramientas de representación gráfica, este espacio transforma volúmenes complejos de
+    información estadística en conocimiento accesible y accionable. Para garantizar que estos datos sirvan como
+    un "espejo" fiel de la realidad, el sitio expone la rigurosa metodología científica del INEGI, la cual abarca
+    desde el diseño conceptual y el muestreo probabilístico, hasta la captación multicanal y la validación
+    minuciosa que elimina cualquier error o incongruencia antes de su publicación.</p>
+  </div>
+</section>
+
+<!-- QUÉ ES INEGI -->
+<section class="panel-full" id="que-es-inegi">
+  <div class="code-tag"><span class="num">01</span><h2 class="panel-title">¿Que es el inegi?</h2></div>
+  <h2 class="panel-title">El organismo autónomo detrás de cada cifra.</h2>
+  <p class="lead">El INEGI (Instituto Nacional de Estadística y Geografía) es un organismo público autónomo del
+  gobierno mexicano. Es el encargado de normar y coordinar el Sistema Nacional de Información Estadística y
+  Geográfica, así como de captar y difundir información sobre el territorio, la población y la economía de México.</p>
+
+  <div class="sub-label">Objetivo</div>
+  <div class="card-grid">
+    <div class="info-card">
+      <h3>Producir información oficial de México</h3>
+      <p>Captar de forma masiva datos precisos y actualizados sobre la población (demografía), la economía
+      (empleo, inflación, empresas) y el territorio nacional (geografía y recursos naturales).</p>
+    </div>
+    <div class="info-card">
+      <h3>Garantizar la calidad y veracidad de los datos</h3>
+      <p>Asegurar que toda la información recolectada sea oportuna, confiable y transparente, sirviendo como un
+      "espejo" neutral y real de la situación del país.</p>
+    </div>
+    <div class="info-card">
+      <h3>Facilitar la toma de decisiones y el diseño de políticas</h3>
+      <p>Poner estos datos a disposición del gobierno, empresas, investigadores y la sociedad en general para que
+      puedan planear el futuro, crear leyes efectivas, invertir con menor riesgo y realizar estudios basados en
+      la realidad.</p>
+    </div>
+  </div>
+</section>
+
+<!-- METODOLOGÍA -->
+<section class="panel-full alt" id="metodologia">
+  <div class="code-tag"><span class="num">02</span><h2 class="panel-title">Metodología</h2></div>
+  <h2 class="panel-title">El camino, paso a paso, de una encuesta a un dato oficial.</h2>
+  <p class="lead">La metodología del INEGI es el conjunto de reglas, técnicas y estándares científicos que utiliza
+  para asegurar que los datos que recolecta sean exactos, confiables y comparables a nivel internacional. En
+  términos sencillos, es el "camino paso a paso" que siguen desde que planean una encuesta hasta que publican
+  los resultados.</p>
+
+  <div class="card-grid four">
+    <div class="info-card">
+      <h3>Diseño conceptual y clasificadores estadísticos</h3>
+      <p>Definen qué medir con catálogos estándar para poder comparar los datos de todo el país.</p>
+    </div>
+    <div class="info-card">
+      <h3>Diseño de muestreo probabilístico</h3>
+      <p>Usan fórmulas matemáticas para encuestar a poca gente que representa a toda la población.</p>
+    </div>
+    <div class="info-card">
+      <h3>Captación multicanal y rigurosa</h3>
+      <p>Recolectan datos en campo, internet o teléfono con personal estrictamente capacitado.</p>
+    </div>
+    <div class="info-card">
+      <h3>Validación y procesamiento de datos</h3>
+      <p>Filtran y corrigen información incongruente o con errores antes de publicarla.</p>
+    </div>
+  </div>
+</section>
+
+<!-- POBLACIÓN -->
+<section class="panel" id="poblacion">
+  <div class="panel-text">
+    <div class="code-tag"><span class="num">03</span><h2 class="panel-title">Población</h2></div>
+    <h2 class="panel-title">La población creció, pero no en línea recta.</h2>
+    <p>Entre <strong>1995 y 2020</strong> el municipio pasó de <strong>59,794</strong> a <strong>65,761</strong> habitantes,
+    un incremento acumulado del 10%. El camino no fue uniforme: entre 2000 y 2005 la población incluso
+    <strong>se contrajo ligeramente</strong> (de 60,771 a 59,980), para luego recuperar ritmo y crecer con más fuerza en la
+    década siguiente, sumando cerca de 6,000 personas entre 2010 y 2020.</p>
+    <p>Ese repunte reciente coincide con la expansión de hogares y servicios de salud que se observa en los demás apartados.</p>
+    <div class="stamp"><div class="delta">+9.98%</div><div class="yrs">1995 → 2020</div></div>
+  </div>
+  <div class="panel-chart">
+    <div class="chart-head"><span class="metric">Población total (personas)</span><span class="src">INEGI · 2020</span></div>
+    <div class="chart-wrap"><canvas id="chartPoblacion"></canvas></div>
+  </div>
+</section>
+
+<!-- EDUCACIÓN -->
+<section class="panel reverse" id="educacion">
+  <div class="panel-chart">
+    <div class="chart-head"><span class="metric">Alfabetización, 15 años y más (%)</span><span class="src">INEGI · 2020</span></div>
+    <div class="chart-wrap"><canvas id="chartEducacion"></canvas></div>
+  </div>
+  <div class="panel-text">
+    <div class="code-tag"><span class="num">04</span><h2 class="panel-title">Educación</h2></div>
+    <h2 class="panel-title">Veinte años de avance sostenido en alfabetización.</h2>
+    <p>El porcentaje de personas de 15 años y más que saben leer y escribir subió de manera constante:
+    <strong>86.4%</strong> en 2000, <strong>88.7%</strong> en 2010, <strong>90.3%</strong> en 2015 y
+    <strong>92.7%</strong> en 2020.</p>
+    <p>Es la curva más estable de las cinco: sin retrocesos entre mediciones, con un avance cercano a
+    <strong>2 puntos porcentuales cada quinquenio</strong>. Aun así, cerca de 1 de cada 14 personas mayores de 15 años
+    todavía no sabe leer ni escribir.</p>
+    <div class="stamp"><div class="delta">+6.3 pp</div><div class="yrs">2000 → 2020</div></div>
+  </div>
+</section>
+
+<!-- SALUD -->
+<section class="panel" id="salud">
+  <div class="panel-text">
+    <div class="code-tag"><span class="num">05</span><h2 class="panel-title">Salud</h2></div>
+    <h2 class="panel-title">La derechohabiencia se multiplicó por cuatro.</h2>
+    <p>Ningún indicador cambió tanto como este. La población con acceso a servicios de salud pasó de
+    <strong>11,188</strong> personas en 2000 a <strong>47,367</strong> en 2020: un crecimiento de
+    <strong>323%</strong> en dos décadas.</p>
+    <p>El salto más pronunciado ocurrió entre 2005 y 2010, cuando la cifra pasó de 24,676 a 38,673 derechohabientes,
+    reflejo de la expansión de esquemas de salud pública durante ese periodo a nivel nacional.</p>
+    <div class="stamp"><div class="delta">×4.2</div><div class="yrs">2000 → 2020</div></div>
+  </div>
+  <div class="panel-chart">
+    <div class="chart-head"><span class="metric">Derechohabientes a servicios de salud</span><span class="src">INEGI · 2020</span></div>
+    <div class="chart-wrap"><canvas id="chartSalud"></canvas></div>
+  </div>
+</section>
+
+<!-- EMPLEO -->
+<section class="panel reverse" id="empleo">
+  <div class="panel-chart">
+    <div class="chart-head"><span class="metric">Conflictos de trabajo registrados</span><span class="src">INEGI · 2025</span></div>
+    <div class="chart-wrap"><canvas id="chartEmpleo"></canvas></div>
+  </div>
+  <div class="panel-text">
+    <div class="code-tag"><span class="num">06</span><h2 class="panel-title">Empleo y ocupación</h2></div>
+    <h2 class="panel-title">Los conflictos laborales van y vienen en oleadas.</h2>
+    <p>A diferencia de los demás indicadores, este no tiene una tendencia clara de largo plazo: sube, baja y vuelve
+    a subir. El pico más alto se registró en <strong>2013</strong>, con <strong>13 conflictos</strong>, seguido de
+    2011 con 11. En el extremo opuesto, <strong>2024</strong> cerró en <strong>cero</strong> conflictos registrados,
+    el mínimo histórico de la serie 1994–2025.</p>
+    <p>2025 arranca con 8 casos, ya por encima del promedio de la última década (~4.6 por año), señal de que la
+    calma de 2024 fue más la excepción que la norma.</p>
+    <div class="stamp"><div class="delta">0 → 8</div><div class="yrs">2024 → 2025</div></div>
+  </div>
+</section>
+
+<!-- HOGARES -->
+<section class="panel" id="hogares">
+  <div class="panel-text">
+    <div class="code-tag"><span class="num">07</span><h2 class="panel-title">Hogares y vivienda</h2></div>
+    <h2 class="panel-title">Más hogares, más pequeños, más numerosos.</h2>
+    <p>Los hogares censales aumentaron de forma sostenida: <strong>13,917</strong> en 2000,
+    <strong>15,111</strong> en 2005, <strong>16,474</strong> en 2010 y <strong>19,523</strong> en 2020, un
+    crecimiento del <strong>40%</strong> en veinte años.</p>
+    <p>Ese ritmo es notablemente más rápido que el crecimiento de la población total en el mismo periodo (+8% entre
+    2000 y 2020), lo que sugiere que el tamaño promedio de cada hogar se ha reducido: más familias, con menos
+    integrantes cada una.</p>
+    <div class="stamp"><div class="delta">+40.3%</div><div class="yrs">2000 → 2020</div></div>
+  </div>
+  <div class="panel-chart">
+    <div class="chart-head"><span class="metric">Hogares censales</span><span class="src">INEGI · 2020</span></div>
+    <div class="chart-wrap"><canvas id="chartHogares"></canvas></div>
+  </div>
+</section>
+
+<!-- CONCLUSIÓN -->
+<section class="doc-section" id="conclusion">
+  <div class="doc-inner">
+    <div class="eyebrow"><h2 class="panel-title">Conclusión</h2></div>
+    <p><span class="dropcap">L</span>a integración y visualización de la información del INEGI dentro de esta
+    plataforma demuestra que los datos abstractos adquieren su verdadero valor cuando se transforman en
+    herramientas de análisis comprensibles. Al proveer un acceso estructurado a bases de datos y representaciones
+    gráficas dinámicas, se facilita un entorno de consulta neutral y transparente que reduce drásticamente el
+    riesgo en la planeación y el diagnóstico de la situación real de nuestro entorno.</p>
+    <p>En conclusión, el estricto apego del INEGI a estándares internacionales y a un riguroso proceso
+    metodológico paso a paso es lo que dota de absoluta certidumbre a cada métrica expuesta en este sitio. La
+    combinación de una captación profesional en campo junto con herramientas modernas de procesamiento digital
+    reafirma la importancia de contar con datos confiables, sirviendo como una base indispensable para la
+    investigación científica, la inversión inteligente, el diseño de leyes efectivas y el desarrollo integral de
+    la sociedad.</p>
+    <div class="doc-stamp-wrap">
+      <div class="stamp"><div class="delta">✓ INEGI</div><div class="yrs">Datos validados</div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="note">Fuente: Instituto Nacional de Estadística y Geografía (INEGI). Cifras de los apartados
+  Demografía y Sociedad (Población, Educación, Salud, Hogares y Vivienda) y Empleo y Ocupación. Página elaborada
+  con fines informativos a partir de tablas públicas de INEGI.</div>
+  <div class="fmark">Ficha Censal · 2026</div>
+</footer>
+
+<script>
+  const inkDeep = '#0A1322';
+  const grid = 'rgba(10,19,34,0.08)';
+  const font = "'IBM Plex Mono', monospace";
+
+  Chart.defaults.font.family = font;
+  Chart.defaults.color = '#3d4a52';
+
+  function baseOpts(extra){
+    return Object.assign({
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false }, tooltip:{
+        backgroundColor: inkDeep, titleFont:{family:font, size:11}, bodyFont:{family:font, size:12},
+        padding:10, cornerRadius:3, displayColors:false
+      }},
+      scales:{
+        x:{ grid:{ display:false }, ticks:{ font:{size:10.5} } },
+        y:{ grid:{ color: grid }, ticks:{ font:{size:10.5} }, beginAtZero:false }
+      }
+    }, extra);
+  }
+
+  // 1. Población
+  new Chart(document.getElementById('chartPoblacion'), {
+    type:'line',
+    data:{
+      labels:['1995','2000','2005','2010','2020'],
+      datasets:[{
+        data:[59794,60771,59980,62919,65761],
+        borderColor:'#2E4C6D', backgroundColor:'rgba(46,76,109,0.12)',
+        borderWidth:2.5, tension:0.35, fill:true,
+        pointBackgroundColor:'#2E4C6D', pointRadius:4, pointHoverRadius:6
+      }]
+    },
+    options: baseOpts({ scales:{ x:{grid:{display:false}}, y:{ grid:{color:grid}, ticks:{callback:v=>v.toLocaleString('es-MX')} } } })
+  });
+
+  // 2. Educación
+  new Chart(document.getElementById('chartEducacion'), {
+    type:'bar',
+    data:{
+      labels:['2000','2010','2015','2020'],
+      datasets:[{
+        data:[86.4,88.7,90.3,92.7],
+        backgroundColor:['#9FB3BC','#7C97A3','#5A7E8C','#D9932F'],
+        borderRadius:3, maxBarThickness:56
+      }]
+    },
+    options: baseOpts({ scales:{ x:{grid:{display:false}}, y:{ min:80, max:100, grid:{color:grid}, ticks:{callback:v=>v+'%'} } } })
+  });
+
+  // 3. Salud
+  new Chart(document.getElementById('chartSalud'), {
+    type:'line',
+    data:{
+      labels:['2000','2005','2010','2020'],
+      datasets:[{
+        data:[11188,24676,38673,47367],
+        borderColor:'#4E8B7C', backgroundColor:'rgba(78,139,124,0.15)',
+        borderWidth:2.5, tension:0.3, fill:true,
+        pointBackgroundColor:'#4E8B7C', pointRadius:4, pointHoverRadius:6
+      }]
+    },
+    options: baseOpts({ scales:{ x:{grid:{display:false}}, y:{ grid:{color:grid}, ticks:{callback:v=>v.toLocaleString('es-MX')} } } })
+  });
+
+  // 4. Empleo
+  const empleoLabels = ['1994','1995','1996','1997','1998','1999','2000','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
+  const empleoData   = [4,0,2,3,2,7,3,1,3,6,8,3,2,2,2,7,4,11,7,13,10,5,2,3,8,4,2,3,2,4,0,8];
+  new Chart(document.getElementById('chartEmpleo'), {
+    type:'bar',
+    data:{
+      labels:empleoLabels,
+      datasets:[{
+        data:empleoData,
+        backgroundColor: empleoData.map(v => v===0 ? '#B7C2C6' : (v>=11 ? '#D9932F' : '#7C97A3')),
+        borderRadius:2, maxBarThickness:14
+      }]
+    },
+    options: baseOpts({
+      scales:{
+        x:{ grid:{display:false}, ticks:{ maxRotation:90, minRotation:90, font:{size:8.5}, autoSkip:true, maxTicksLimit:16 } },
+        y:{ grid:{color:grid}, ticks:{ stepSize:2 } }
+      }
+    })
+  });
+
+  // 5. Hogares
+  new Chart(document.getElementById('chartHogares'), {
+    type:'bar',
+    data:{
+      labels:['2000','2005','2010','2020'],
+      datasets:[{
+        data:[13917,15111,16474,19523],
+        backgroundColor:['#9FB3BC','#7C97A3','#5A7E8C','#D9932F'],
+        borderRadius:3, maxBarThickness:56
+      }]
+    },
+    options: baseOpts({ scales:{ x:{grid:{display:false}}, y:{ grid:{color:grid}, ticks:{callback:v=>v.toLocaleString('es-MX')} } } })
+  });
+</script>
+
+</body>
+</html>
